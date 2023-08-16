@@ -13,7 +13,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights-file', type=str, required=True)
     parser.add_argument('--image-file', type=str, required=True)
-    parser.add_argument('--scale', type=int, default=3)
+    parser.add_argument('--lr-file', type=str)
+    parser.add_argument('--scale', type=int, default=2)
     args = parser.parse_args()
 
     cudnn.benchmark = True
@@ -30,17 +31,26 @@ if __name__ == '__main__':
 
     model.eval()
 
+
+
     image = pil_image.open(args.image_file).convert('RGB')
 
     image_width = (image.width // args.scale) * args.scale
     image_height = (image.height // args.scale) * args.scale
-    image = image.resize((image_width, image_height), resample=pil_image.BICUBIC)
-    image = image.resize((image.width // args.scale, image.height // args.scale), resample=pil_image.BICUBIC)
-    image = image.resize((image.width * args.scale, image.height * args.scale), resample=pil_image.BICUBIC)
-    image.save(args.image_file.replace('.', '_bicubic_x{}.'.format(args.scale)))
+    image = image.resize((image_width, image_height), resample=pil_image.BICUBIC) #LR의 정수배로 리사이즈
+    image = image.resize((image.width // args.scale, image.height // args.scale), resample=pil_image.BICUBIC) #bicubic으로 LR
+    image = image.resize((image.width * args.scale, image.height * args.scale), resample=pil_image.BICUBIC) #bicubic으로 다시 키움
+    image.save(args.image_file.replace('.', '_bicubic_x{}.'.format(args.scale))) #방금 그거 저장
 
-    image = np.array(image).astype(np.float32)
-    ycbcr = convert_rgb_to_ycbcr(image)
+    if args.lr_file is not None:
+        lr = pil_image.open(args.lr_file).convert('RGB')
+        lr = lr.resize((lr.width * args.scale, lr.height * args.scale), resample=pil_image.BICUBIC)
+        lr = np.array(lr).astype(np.float32)
+        ycbcr = convert_rgb_to_ycbcr(lr)
+    else:
+        image = np.array(image).astype(np.float32)
+        ycbcr = convert_rgb_to_ycbcr(image)
+
 
     y = ycbcr[..., 0]
     y /= 255.
